@@ -40,8 +40,8 @@ public class TetrisShape {
         }
         else
         {
-            anchorX = 75;
-            anchorY = 75;
+            anchorX = 50;
+            anchorY = 50;
         }
         rotations = 0;
         updateCells();
@@ -128,7 +128,7 @@ public class TetrisShape {
         rotations++;
     }
 
-    public void rotate() {
+    public void rotate(boolean projection) {
         switch (currShape) {
             case J_SHAPE:
             case L_SHAPE:
@@ -146,28 +146,8 @@ public class TetrisShape {
             default:
                 break;
         }
-        updateCells();
-    }
-
-    private void projectionRotate() {
-        switch (currShape) {
-            case J_SHAPE:
-            case L_SHAPE:
-            case T_SHAPE:
-                rotateRight();
-                break;
-            case S_SHAPE:
-            case Z_SHAPE:
-                zAndSRotate();
-                break;
-            case I_SHAPE:
-                iRotate();
-                break;
-            case O_SHAPE:
-            default:
-                break;
-        }
-
+        if (!projection)
+            updateCells();
     }
 
     public void moveDown() {
@@ -211,7 +191,7 @@ public class TetrisShape {
     public boolean rotationCollision() {
         boolean collisionDetected = false;
         CopyOnWriteArrayList<Integer> shapeCopy = new CopyOnWriteArrayList<>(shape);
-        projectionRotate();
+        rotate(true);
         rotations--;
 
         Tetris.Cell temp1 = new Tetris.Cell(anchorX, anchorY, CELL_WIDTH, CELL_HEIGHT, color);

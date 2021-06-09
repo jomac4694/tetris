@@ -97,7 +97,7 @@ public class Tetris extends JFrame implements KeyListener, ActionListener {
         else if (e.getKeyCode() == KeyEvent.VK_UP)
         {
             if (!panel.getShape().rotationCollision())
-                panel.getShape().rotate();
+                panel.getShape().rotate(false);
         }
         else if (e.getKeyCode() == KeyEvent.VK_DOWN)
         {
