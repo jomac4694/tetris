@@ -1,40 +1,74 @@
 import javax.swing.*;
+import javax.swing.Timer;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Tetris extends JFrame implements KeyListener, ActionListener {
 
-    static final int BOARD_WIDTH = 250;
-    static final int BOARD_HEIGHT = 500;
+    public static final CopyOnWriteArrayList<Cell> cells = new CopyOnWriteArrayList<>();
+    private static final CopyOnWriteArrayList<Cell> toDelete = new CopyOnWriteArrayList<>();
+    private TetrisShape nextShape = new TetrisShape(true);
+    static final int BOARD_WIDTH = 350;
+    static final int BOARD_HEIGHT = 700;
     static final int VERTICAL_CELLS = 22;
     static final int HORIZONTAL_CELLS = 10;
     TetrisPanel panel = new TetrisPanel();
-    JPanel panel2 = new JPanel();
+    NextShapePanel panel2 = new NextShapePanel();
+    Timer timer;
 
     public Tetris()
     {
-        Timer timer = new Timer(1000, this);
+        timer = new Timer(400, this);
         panel.setSize(BOARD_WIDTH, BOARD_HEIGHT);
         panel.setBackground(Color.BLACK);
-        panel.setShape(new TetrisShape());
+        panel.setShape(new TetrisShape(false));
+        panel2.setBounds(375, 100, 150, 150);
+        panel2.setBackground(Color.BLACK);
         setLayout(null);
         add(panel);
+        add(panel2);
+        setTitle("Tetris");
         setBackground(Color.BLACK);
-        setSize(BOARD_WIDTH, BOARD_HEIGHT);
+        setSize(BOARD_WIDTH+200, BOARD_HEIGHT+100);
         addKeyListener(this);
+        setResizable(false);
         timer.start();
         setVisible(true);
     }
 
 
+
+    class NextShapePanel extends JPanel
+    {
+
+        public NextShapePanel()
+        {
+
+        }
+
+        @Override
+        public void paintComponent(Graphics g)
+        {
+            super.paintComponent(g);
+            for (Cell c : nextShape.getCells())
+            {
+                g.setColor(Color.WHITE);
+                g.drawRect((int) c.getX(), (int) c.getY(), (int) c.getWidth(), (int) c.getHeight());
+                g.setColor(c.getColor());
+                g.fillRect((int) c.getX(), (int) c.getY(), (int) c.getWidth(), (int) c.getHeight());
+
+            }
+            g.setColor(Color.RED);
+            g.drawString("NEXT SHAPE", 65, 140);
+        }
+
+
+    }
 
 
     @Override
@@ -49,8 +83,28 @@ public class Tetris extends JFrame implements KeyListener, ActionListener {
         System.out.println(e.getKeyCode());
         if (e.getKeyCode() == KeyEvent.VK_N)
         {
-            panel.setShape(new TetrisShape());
+            panel.setShape(new TetrisShape(false));
         }
+        else if (e.getKeyCode() == KeyEvent.VK_LEFT)
+        {
+            System.out.println("moving left");
+            panel.getShape().moveLeft();
+        }
+        else if (e.getKeyCode() == KeyEvent.VK_RIGHT)
+        {
+            panel.getShape().moveRight();
+        }
+        else if (e.getKeyCode() == KeyEvent.VK_UP)
+        {
+            if (!panel.getShape().rotationCollision())
+                panel.getShape().rotate();
+        }
+        else if (e.getKeyCode() == KeyEvent.VK_DOWN)
+        {
+            if (!panel.getShape().isAtBottom())
+                panel.getShape().moveDown();
+        }
+
         else
         {
             panel.update();
@@ -58,7 +112,7 @@ public class Tetris extends JFrame implements KeyListener, ActionListener {
 
 
         panel.repaint();
-        System.out.println("gjkfjkjkds");
+
     }
 
     @Override
@@ -68,9 +122,79 @@ public class Tetris extends JFrame implements KeyListener, ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (!panel.getShape().isAtBottom())
+        if (!panel.getShape().isAtBottom()) {
             panel.getShape().moveDown();
+        }
+        else {
+            cells.addAll(panel.getShape().getCells());
+            nextShape.setX(BOARD_WIDTH/2);
+            nextShape.setY(-TetrisShape.CELL_HEIGHT);
+            panel.setShape(nextShape);
+            nextShape = new TetrisShape(true);
+        }
+        checkAndProcessCompleteRows();
+        gameLost();
         panel.repaint();
+        panel2.repaint();
+    }
+
+
+    private void gameLost()
+    {
+        for (Cell cell : cells)
+        {
+            if (cell.getY() < 0.0)
+            {
+                JOptionPane.showMessageDialog(null, "you lose");
+                timer.stop();
+                break;
+            }
+        }
+    }
+    private void checkAndProcessCompleteRows()
+    {
+        HashMap<Double, CopyOnWriteArrayList<Cell>> map = new HashMap<>();
+
+            for (Cell cell : cells)
+            {
+                if (map.get(cell.getY()) == null)
+                {
+                    CopyOnWriteArrayList<Cell> newL = new CopyOnWriteArrayList<>();
+                    newL.add(cell);
+                    map.put(cell.getY(), newL);
+                }
+                else
+                {
+                    map.get(cell.getY()).add(cell);
+                }
+            }
+        double highestY = 0.0;
+        int rowsDeleted = 0;
+
+        for (Map.Entry<Double, CopyOnWriteArrayList<Cell>> entry : map.entrySet())
+        {
+            if (entry.getValue().size() == HORIZONTAL_CELLS)
+            {
+                toDelete.addAll(entry.getValue());
+                highestY = entry.getKey();
+                cells.removeAll(toDelete);
+                toDelete.clear();
+                int index = 0;
+                for (Cell cell : cells)
+                {
+                    if (cell.getY() < highestY)
+                    {
+                        Cell tmp = new Cell((int) cell.getX(), (int) cell.getY() + (TetrisShape.CELL_HEIGHT),
+                                TetrisShape.CELL_WIDTH, TetrisShape.CELL_HEIGHT, cell.getColor());
+                        cells.set(index, tmp);
+                    }
+                    index++;
+                }
+            }
+        }
+
+
+
     }
 
 
@@ -141,7 +265,7 @@ public class Tetris extends JFrame implements KeyListener, ActionListener {
 
         void update()
         {
-            tShape.rotate();
+
         }
         @Override
         public void paintComponent(Graphics g)
@@ -150,12 +274,21 @@ public class Tetris extends JFrame implements KeyListener, ActionListener {
 
             for (Cell c : tShape.getCells())
             {
-                System.out.println("yoooo");
                 g.setColor(Color.WHITE);
                 g.drawRect((int) c.getX(), (int) c.getY(), (int) c.getWidth(), (int) c.getHeight());
                 g.setColor(c.getColor());
                 g.fillRect((int) c.getX(), (int) c.getY(), (int) c.getWidth(), (int) c.getHeight());
             }
+
+            for (Cell c : cells) {
+                g.setColor(Color.WHITE);
+                g.drawRect((int) c.getX(), (int) c.getY(), (int) c.getWidth(), (int) c.getHeight());
+                g.setColor(c.getColor());
+                g.fillRect((int) c.getX(), (int) c.getY(), (int) c.getWidth(), (int) c.getHeight());
+            }
+
+
+
         }
 
         public void setShape(TetrisShape shape)
@@ -169,19 +302,12 @@ public class Tetris extends JFrame implements KeyListener, ActionListener {
         }
 
 
+
     }
 
 
     public static void main(String[] args)
     {
-        /*
-        CopyOnWriteArrayList<Integer> shape = new CopyOnWriteArrayList<Integer>(Arrays.asList(1,7,8))
-        shape = Tetris.rotate(shape);
-        shape.forEach(integer -> {
-            System.out.println(integer);
-        });
-         */
-
         new Tetris();
     }
 
